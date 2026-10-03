@@ -2181,6 +2181,102 @@ Report generating algorithm: N/A
 **Assumptions:**
 **Open Issues:**
 
+### **UC-WAR-missing-submission-reminders: The instructor views missing weekly submissions and sends targeted reminders**
+
+**UC ID and Name:** UC-WAR-missing-submission-reminders: View missing weekly submissions and send targeted reminders
+**Created By:** GitHub Copilot CLI
+**Date Created:** 02/Oct/2026
+**Primary Actor:** instructor
+**Secondary Actors:** student (reminder recipient), email provider
+**Trigger:** The instructor requests the missing-submission list for a course section and week.
+**Description:** The instructor wants to identify students with incomplete weekly activity reports or peer evaluations and send targeted reminders, so that students can complete submissions that are still eligible.
+
+**Preconditions:**
+- PRE-1. The instructor is logged into the system.
+- PRE-2. The instructor is assigned to the selected course section, or is a course admin authorized for the course section she owns (BR-section-scoped-access, BR-role-based-access).
+
+**Postconditions:**
+- POST-1. The missing-submission list for the selected course section and week is displayed.
+- POST-2. For each selected, still-missing and reminder-eligible artifact whose email was accepted by the provider, a reminder request is recorded; per-recipient outcomes are displayed.
+
+**Main Success Scenario:**
+1. The instructor requests the missing-submission list.
+2. The system asks the instructor to select a course section and a calendar week.
+3. The instructor selects the course section and week and requests the list.
+4. The system validates that the instructor may access the course section and that the week belongs to its calendar.
+5. The system determines the weekly activity report and peer-evaluation status for each enrolled student according to the definitions and rules in Associated Information.
+6. The system displays the students, each artifact's status, and which missing artifacts are eligible for a reminder, and asks the instructor to select targets.
+7. The instructor selects one or more eligible missing artifacts and confirms the reminder request.
+8. The system rechecks each selected artifact's current submission state, applies the reminder-frequency limit, sends an individual reminder for each eligible artifact, and displays each outcome.
+9. Use case ends.
+
+**Extensions:**
+- **2a. The instructor is not authorized for the selected course section:**
+  - 2a1. The system denies access without displaying the course section's student or submission information (BR-section-scoped-access, BR-role-based-access).
+  - 2a2. Use case ends.
+- **4a. The selected week is inactive for the course section:**
+  - 4a1. The system still evaluates weekly activity reports for the selected week, because those reports are not limited to active weeks (BR-active-weeks, BR-war-reminder-availability).
+  - 4a2. The system marks peer evaluations as not applicable for that week (BR-active-weeks) and continues at step 5.
+- **4b. Required course-section start or end dates are missing:**
+  - 4b1. The system rejects the request and reports that the course-section calendar is not configured; it does not display a missing-submission list or accept reminder actions for that course section (BR-active-weeks).
+  - 4b2. Use case ends.
+- **5a. A student has no team assignment for the selected week:**
+  - 5a1. The system identifies the student as not eligible for either artifact, does not count either as missing, and offers no reminder target for that student (BR-team-assignment-required, BR-weekly-submission-completeness).
+  - 5a2. The system continues with the remaining students at step 5.
+- **5b. A peer-evaluation submission window has not opened or has closed:**
+  - 5b1. The system marks that peer evaluation as not yet open or as incomplete with its submission window closed, respectively, and does not offer it as a reminder target (BR-evaluation-submission-window).
+  - 5b2. The system continues with the remaining artifacts at step 5. Weekly activity reports remain subject to BR-war-reminder-availability.
+- **5c. A previously stored submission has been deleted:**
+  - 5c1. The system treats a deleted activity or peer-evaluation record as not satisfying completeness and lists the artifact as missing only if it is otherwise eligible for a reminder (BR-weekly-submission-completeness).
+  - 5c2. The system continues at step 5.
+- **5d. No missing submissions exist:**
+  - 5d1. The system displays that all applicable submissions are complete and does not offer a send action.
+  - 5d2. Use case ends.
+- **5e. Missing artifacts exist, but none is currently eligible for a reminder:**
+  - 5e1. The system displays the applicable status (not yet open, window closed, or within the reminder-frequency limit) and does not offer a send action for those artifacts.
+  - 5e2. Use case ends.
+- **5f. The course section has no rubric or its rubric has no criteria:**
+  - 5f1. The system marks peer-evaluation status as a configuration problem and does not offer peer-evaluation reminders; it continues to determine weekly activity report status.
+  - 5f2. The system continues with the remaining artifacts at step 5.
+- **5g. A student account is disabled:**
+  - 5g1. The system displays the student's historical submission status but does not offer or send a reminder to that student (BR-student-lifecycle, BR-reminder-frequency-limit).
+  - 5g2. The system continues with the remaining students at step 5.
+- **7a. A reminder for the selected student, course section, artifact type, and week was accepted within the preceding seven days:**
+  - 7a1. The system does not queue another reminder for that student, artifact type, and week, and displays when another reminder may be requested (BR-reminder-frequency-limit).
+  - 7a2. The system continues processing any other selected targets at step 8.
+- **8a. The student completes a selected artifact after the list is loaded but before the system rechecks it:**
+  - 8a1. The system does not queue a reminder for that artifact and reports it as skipped because it is no longer missing (BR-reminder-current-state).
+  - 8a2. The system continues processing any other selected targets at step 8.
+- **8b. The email provider rejects a recipient address:**
+  - 8b1. The system records and displays that recipient's reminder as rejected, does not count it toward the reminder-frequency limit, and continues processing other selected targets (BR-reminder-frequency-limit).
+- **8c. The email provider reports a transient failure:**
+  - 8c1. The system records and displays the transient failure, does not count it toward the reminder-frequency limit, and continues processing other selected targets (BR-reminder-frequency-limit).
+- **8d. The email provider's outcome cannot be determined:**
+  - 8d1. The system records and displays the outcome as unknown and blocks another attempt for the same student, course section, artifact type, and week until the outcome is reconciled (BR-reminder-frequency-limit).
+  - 8d2. If reconciliation confirms acceptance, the system counts the reminder toward the frequency limit; if reconciliation confirms failure, the system releases the block without counting it (BR-reminder-frequency-limit).
+
+**Priority:** High
+**Frequency of Use:** Approximately 2 instructors, averaging 1 use per course section per week.
+**Business Rules:** BR-section-scoped-access, BR-role-based-access, BR-team-scoped-access, BR-team-assignment-required, BR-student-lifecycle, BR-active-weeks, BR-evaluation-editable-until-close, BR-evaluation-submission-window, BR-weekly-submission-completeness, BR-war-reminder-availability, BR-reminder-frequency-limit, BR-reminder-current-state, BR-reminder-email-disclosure
+
+**Associated Information:**
+
+Submission status and completeness:
+- A calendar week belongs to the course section when its ISO Monday-through-Sunday dates overlap the course section's inclusive start and end dates (BR-active-weeks). If either required date is missing, the system rejects the list request and reminder actions for that course section. The configured application time zone governs calendar boundaries (BR-evaluation-submission-window).
+- For a weekly activity report, the system marks a student complete when at least one non-deleted activity record is stored for that student and week; there is no separate finalize action. A report with no such record is missing (BR-weekly-submission-completeness).
+- For a peer evaluation, the system marks a student complete only when she has submitted an integer score for every rubric criterion in force at the end of the evaluated week for every member, including herself, of the team roster assigned to her at the end of that week. A partial evaluation is missing. A peer evaluation is applicable only to an active week and is reminder-eligible only during its submission window; a missed evaluation cannot be made up. If the course section has no rubric or the rubric has no criteria, the system identifies a configuration problem and offers no peer-evaluation reminder (BR-active-weeks, BR-evaluation-submission-window, BR-weekly-submission-completeness).
+- A student with no team assignment at the end of the selected week is displayed as not eligible, not as missing. Student-authored work remains team-scoped; instructor visibility and reminder actions remain limited to the instructor's authorized course sections (BR-team-scoped-access, BR-section-scoped-access, BR-team-assignment-required).
+- A disabled student's historical submission status remains visible to an authorized instructor, but no reminder is offered or sent while the account is disabled (BR-student-lifecycle, BR-reminder-frequency-limit).
+- Statuses distinguish complete, missing and reminder-eligible, not applicable, window not open, window closed, rate-limited, and a peer-evaluation configuration problem. A deleted submission does not count as complete (BR-weekly-submission-completeness).
+- The instructor may select individual student/artifact pairs; the system sends separate messages to each selected student's account email address. For each target, the system records and displays accepted, rejected, transient-failure, or unknown outcomes; accepted means the provider accepted the message into its queue, not that final delivery is confirmed. A transient failure does not prevent processing other selected targets. An unknown outcome blocks another attempt for that target until reconciled (BR-reminder-frequency-limit).
+- The reminder-frequency limit applies to instructor-initiated and scheduled reminders. A scheduled message that names multiple artifacts counts separately against the limit for each corresponding student, course section, artifact type, and week (BR-reminder-frequency-limit). An accepted reminder prevents another accepted reminder for that target in the rolling seven-day period; explicit rejection or transient failure does not consume the limit, and an unknown outcome blocks another attempt until reconciled.
+- Reminder content is limited to the recipient's own missing artifact type and week and an authenticated application link; it contains no peer-evaluation scores, comments, or other students' information (BR-reminder-email-disclosure, CO-ferpa).
+- The automatic reminder scheduler is outside this instructor-triggered flow and must be specified as a separate related use case. It shares the reminder-frequency limit when its scheduled message corresponds to a student, course section, artifact type, and week (BR-reminder-frequency-limit).
+
+**Related Use Cases:** UC-WAR-manage-activities: Manage activities in a weekly activity report; UC-EVA-submit-evaluation: Submit a peer evaluation for the previous week. The automatic reminder scheduler is a separate related use case and is not specified here.
+**Assumptions:** A student's account email address is the reminder destination.
+**Open Issues:**
+
 ## **Peer Evaluation**
 
 ### **UC-EVA-submit-evaluation: The student submits a peer evaluation for the previous week**
